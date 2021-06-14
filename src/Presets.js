@@ -3,6 +3,7 @@ class Presets {
 
     constructor() {
         this.seq = 0b0000;
+        // this.seq = 0b1111;
 
         if (Presets.depth % 2 == 0)
             this.generateGridTemplate(Presets.depth + 1);
@@ -13,24 +14,31 @@ class Presets {
     generateGridTemplate(res) {
         this.vertices = new Array(17);
         this.triangles = new Array(17);
+        this.edgeVertices = new Array(17);
+        this.edgeTriangles = new Array(17);
 
         for (let quadI = 0; quadI < 16; quadI++) { // 0b0000 - 0b1111
             let grid = this.generateGridWithIndex(quadI, res);
             this.vertices [quadI] = grid[0];
             this.triangles[quadI] = grid[1];
+            this.edgeVertices[quadI] = grid[2];
+            this.edgeTriangles[quadI] = grid[3];
         }
     }
 
     generateGridWithIndex(quadI, res) {
         let vertices = []; // dynamic list
         let triangles = []; // dynamic list
+        let edgeVertices = []; // dynamic list
+        let edgeTriangles = []; // dynamic list
 
         // Compute vertices and main triangles
         let indexTr = 0;
         for (let j = 0; j < res; j++) {
             for (let i = 0; i < res; i++) {
-                let x = 5 + 10 / (res - 1) * i;
-                let y = 0 + 10 / (res - 1) * j;
+                // default size : 10x10
+                let x = (res - 1) * i * 10 / (res - 1) / (res - 1);
+                let y = (res - 1) * j * 10 / (res - 1) / (res - 1);
                 let index = i + j * res;
 
                 // Vertices
@@ -49,6 +57,40 @@ class Presets {
                     triangles[indexTr + 1] = index + 1 + res; // up right
                     triangles[indexTr + 2] = index + 1; // down right
                     indexTr += 3;
+                }
+            }
+        }
+
+        // Edge vertices
+        let it = -1;
+        for (let i = 0; i < 4 * (res + 2); i++) {
+            if (i == 0) // edge top left
+                edgeVertices[++it] = new Vector(-10 / (res - 1), 10 / (res - 1) * res);
+            else if (i <= res) { // up
+                if ((quadI & 0b1000) == 0b0000) { // 0xxx
+                    let x = 10 / (res - 1) * (i - 1);
+                    let y = 10 / (res - 1) * res;
+                    edgeVertices[++it] = new Vector(x, y);
+                }
+                else if (i % 2 != 0) { // 1xxx
+                    let x = 10 / (res - 1) * (i - 1);
+                    let y = 10 / (res - 2) * res;
+                    edgeVertices[++it] = new Vector(x, y);
+                }
+            }
+            else if (i == res + 1) // edge top right
+                edgeVertices[++it] = new Vector(10 / (res - 1) * res, 10 / (res - 1) * res);
+            else if (i <= res + 1 + res) { // right
+                if ((quadI & 0b0100) == 0b0000) { // x0xx
+                    let x = 10 / (res - 1) * res;
+                    let y = 10 / (res - 2) * res - 10 / (res - 1) * (i - res - 1 - res);
+                    console.log((i - res - 1 - res));
+                    edgeVertices[++it] = new Vector(x, y);
+                }
+                else if (i % 2 != 0) { // x1xx
+                    // let x = 10 / (res - 1) * (i - 1);
+                    // let y = 10 / (res - 2) * res;
+                    // edgeVertices[++it] = new Vector(x, y);
                 }
             }
         }
@@ -190,7 +232,7 @@ class Presets {
             }
         }
 
-        return [vertices, triangles]; // .toArray()
+        return [vertices, triangles, edgeVertices, edgeTriangles]; // .toArray()
     }
 
     showGridWithSeq(seq) {
@@ -203,13 +245,38 @@ class Presets {
             .stroke(255)
             .strokeWeight(2)
             .fill(200, 200, 200, 0.7);
+        let s = 8;
+        let t = new Vector(7, 1);
         for (var i = 0; i < this.triangles[this.seq].length; i += 3) {
             drawer
                 .beginShape()
-                .vertex(this.vertices[this.seq][this.triangles[this.seq][i+0]].x, this.vertices[this.seq][this.triangles[this.seq][i+0]].y)
-                .vertex(this.vertices[this.seq][this.triangles[this.seq][i+1]].x, this.vertices[this.seq][this.triangles[this.seq][i+1]].y)
-                .vertex(this.vertices[this.seq][this.triangles[this.seq][i+2]].x, this.vertices[this.seq][this.triangles[this.seq][i+2]].y)
+                .vertex(this.vertices[this.seq][this.triangles[this.seq][i+0]].x * s / 10 + t.x, this.vertices[this.seq][this.triangles[this.seq][i+0]].y * s / 10 + t.y)
+                .vertex(this.vertices[this.seq][this.triangles[this.seq][i+1]].x * s / 10 + t.x, this.vertices[this.seq][this.triangles[this.seq][i+1]].y * s / 10 + t.y)
+                .vertex(this.vertices[this.seq][this.triangles[this.seq][i+2]].x * s / 10 + t.x, this.vertices[this.seq][this.triangles[this.seq][i+2]].y * s / 10 + t.y)
                 .endShape(CLOSE);
+        }
+
+        // Draw edges
+        // drawer
+        //     .stroke(255, 150, 150)
+        //     .strokeWeight(2)
+        //     .fill(100, 200, 100, 0.7);
+        // for (var i = 0; i < this.edgeTriangles[this.seq].length; i += 3) {
+        //     drawer
+        //         .beginShape()
+        //         .vertex(this.edgeVertices[this.seq][this.edgeTriangles[this.seq][i+0]].x, this.edgeVertices[this.seq][this.edgeTriangles[this.seq][i+0]].y)
+        //         .vertex(this.edgeVertices[this.seq][this.edgeTriangles[this.seq][i+1]].x, this.edgeVertices[this.seq][this.edgeTriangles[this.seq][i+1]].y)
+        //         .vertex(this.edgeVertices[this.seq][this.edgeTriangles[this.seq][i+2]].x, this.edgeVertices[this.seq][this.edgeTriangles[this.seq][i+2]].y)
+        //         .endShape(CLOSE);
+        // }
+        // Draw edge vertices
+        drawer
+            .stroke(255, 150, 150)
+            .strokeWeight(2)
+            .fill(100, 200, 100, 0.7);
+        for (var i = 0; i < this.edgeVertices[this.seq].length; i++) {
+            drawer
+                .point(this.edgeVertices[this.seq][i].x * s / 10 + t.x, this.edgeVertices[this.seq][i].y * s / 10 + t.y);
         }
     }
 }
